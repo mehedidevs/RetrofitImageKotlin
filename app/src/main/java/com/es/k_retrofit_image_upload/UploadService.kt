@@ -12,7 +12,7 @@ interface UploadService {
     @POST("/single")
     suspend fun uploadImage(
         @Part image: MultipartBody.Part
-    ): ResponseBody
+    ): ImageUploadResponse
 
 
 }

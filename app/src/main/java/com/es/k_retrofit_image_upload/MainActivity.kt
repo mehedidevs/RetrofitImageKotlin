@@ -2,15 +2,25 @@ package com.es.k_retrofit_image_upload
 
 import android.app.Activity
 import android.net.Uri
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
+import android.view.View
 import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import com.bumptech.glide.Glide
 import com.es.k_retrofit_image_upload.databinding.ActivityMainBinding
 import com.github.dhaval2404.imagepicker.ImagePicker
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 import java.io.File
 import java.io.FileOutputStream
 
@@ -18,6 +28,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var fileUri: Uri
     private lateinit var binding: ActivityMainBinding
     val BASEURL = "https://image-upload-api-retrofit.herokuapp.com/"
+
+    //val BASEURL = "https://image-upload-api-retrofit.herokuapp.com/files/l"
     private val startForProfileImageResult =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result: ActivityResult ->
             val resultCode = result.resultCode
@@ -26,6 +38,7 @@ class MainActivity : AppCompatActivity() {
             if (resultCode == Activity.RESULT_OK) {
                 //Image Uri will not be null for RESULT_OK
                 fileUri = data?.data!!
+                binding.uploadBtn.visibility = View.VISIBLE
 
                 binding.showImageOffline.setImageURI(fileUri)
 
@@ -56,6 +69,11 @@ class MainActivity : AppCompatActivity() {
                 }
         }
 
+        binding.uploadBtn.setOnClickListener {
+
+            upload()
+        }
+
 
     }
 
@@ -70,6 +88,26 @@ class MainActivity : AppCompatActivity() {
         val outputStream = FileOutputStream(file)
         inputStream!!.copyTo(outputStream)
         val requestBody = file.asRequestBody("image/*".toMediaTypeOrNull())
+
+        val part = MultipartBody.Part.createFormData("profile", file.name, requestBody)
+        val retrofit = Retrofit.Builder().baseUrl(BASEURL)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(UploadService::class.java)
+        var response: ImageUploadResponse
+
+        CoroutineScope(Dispatchers.Main).launch {
+            response = retrofit.uploadImage(part)
+            Log.i("TAG", "upload:$response ")
+            Glide.with(applicationContext).load("${BASEURL}files/${response.filename}")
+                .into(binding.showImageOnline)
+
+
+        }
+
+
+
+
 
         inputStream.close()
         outputStream.close()
